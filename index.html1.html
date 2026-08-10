@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SHADOW BUGZ — Bayar QRIS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --yellow:#FFE600;
+    --black:#0A0A0A;
+    --white:#FFFFFF;
+    --red:#FF3B30;
+    --blue:#0057FF;
+    --green:#00C853;
+    --pink:#FF6EC7;
+    --border:5px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--yellow);
+    background-image:radial-gradient(var(--black) 1.5px, transparent 1.5px);
+    background-size: 22px 22px;
+    font-family:'Space Grotesk',sans-serif;
+    color:var(--black);
+    min-height:100vh;
+    padding-bottom:40px;
+  }
+  h1,h2,h3{font-family:'Archivo Black',sans-serif; margin:0; text-transform:uppercase; letter-spacing:-0.5px;}
+  .wrap{max-width:480px; margin:0 auto; padding:0 16px;}
+
+  header{background:var(--black); border-bottom:var(--border) solid var(--black); padding:18px 16px 22px; position:relative; overflow:hidden;}
+  .header-inner{max-width:480px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; gap:10px; position:relative; z-index:2;}
+  .logo-box{background:var(--yellow); border:4px solid var(--white); padding:8px 12px; transform:rotate(-3deg); box-shadow:5px 5px 0 var(--red);}
+  .logo-box h1{color:var(--black); font-size:22px; line-height:1;}
+  .logo-box span{display:block; font-size:10px; font-weight:700; margin-top:2px;}
+  .qris-badge{background:var(--white); color:var(--black); border:3px solid var(--white); font-weight:700; font-size:11px; padding:6px 10px; transform:rotate(3deg); white-space:nowrap;}
+  .zigzag{position:absolute; bottom:-2px; left:0; width:200%; height:14px;
+    background: linear-gradient(135deg, var(--yellow) 25%, transparent 25%) 0 0, linear-gradient(225deg, var(--yellow) 25%, transparent 25%) 0 0;
+    background-size: 20px 20px; animation: slide 6s linear infinite;}
+  @keyframes slide{ from{transform:translateX(0);} to{transform:translateX(-20px);} }
+
+  main{padding-top:26px; position:relative;}
+  .deco-square{position:absolute; width:38px; height:38px; border:4px solid var(--black); background:var(--pink); top:-6px; right:8px; transform:rotate(12deg); z-index:0;}
+  .deco-circle{position:absolute; width:26px; height:26px; border-radius:50%; border:4px solid var(--black); background:var(--blue); top:40px; left:2px; z-index:0;}
+
+  .card{background:var(--white); border:var(--border) solid var(--black); box-shadow:8px 8px 0 var(--black); padding:20px; position:relative; transform:rotate(-0.6deg); z-index:1; margin-bottom:24px;}
+
+  .status-badge{position:absolute; top:-22px; right:-10px; border:4px solid var(--black); padding:8px 14px; font-family:'Archivo Black',sans-serif; font-size:12px; transform:rotate(6deg); box-shadow:4px 4px 0 var(--black); z-index:5; transition:all .25s ease; text-align:center; line-height:1.2;}
+  .status-badge.pending{background:var(--yellow); color:var(--black);}
+  .status-badge.verif{background:var(--blue); color:var(--white);}
+  .status-badge.success{background:var(--green); color:var(--black);}
+  .status-badge.failed{background:var(--red); color:var(--white);}
+  .status-badge.expired{background:#BFBFBF; color:var(--black);}
+
+  .card-label{display:inline-block; background:var(--black); color:var(--yellow); font-size:11px; font-weight:700; padding:4px 8px; margin-bottom:14px; letter-spacing:1px;}
+
+  .field-title{font-size:13px; font-weight:700; margin-bottom:8px; text-transform:uppercase;}
+  .chip-row{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px;}
+  .chip{border:3px solid var(--black); background:var(--white); padding:8px 12px; font-weight:700; font-size:13px; cursor:pointer; box-shadow:3px 3px 0 var(--black); transition:transform .08s ease, box-shadow .08s ease;}
+  .chip:active, .chip.active{transform:translate(3px,3px); box-shadow:0 0 0 var(--black); background:var(--yellow);}
+  .amount-input-row{display:flex; align-items:stretch; border:4px solid var(--black); margin-bottom:16px; background:var(--white);}
+  .amount-prefix{background:var(--black); color:var(--white); font-weight:700; padding:12px 10px; font-size:16px;}
+  .amount-input-row input{border:none; outline:none; font-family:'Archivo Black',sans-serif; font-size:20px; padding:10px; width:100%; background:transparent;}
+  .btn{display:inline-block; width:100%; text-align:center; font-family:'Archivo Black',sans-serif; font-size:15px; letter-spacing:.5px; border:4px solid var(--black); padding:14px; cursor:pointer; box-shadow:6px 6px 0 var(--black); transition:transform .08s ease, box-shadow .08s ease; background:var(--blue); color:var(--white);}
+  .btn:active{ transform:translate(6px,6px); box-shadow:0 0 0 var(--black); }
+  .btn.yellow{background:var(--yellow); color:var(--black);}
+  .btn.green{background:var(--green); color:var(--black);}
+  .btn.white{background:var(--white); color:var(--black);}
+  .btn.red{background:var(--red); color:var(--white);}
+  .btn.small{font-size:12px; padding:11px 8px; box-shadow:4px 4px 0 var(--black);}
+  .btn.small:active{transform:translate(4px,4px); box-shadow:0 0 0 var(--black);}
+  .btn[disabled]{opacity:.5; cursor:not-allowed;}
+  .btn[disabled]:active{transform:none; box-shadow:6px 6px 0 var(--black);}
+
+  .qr-box{background:var(--white); border:4px solid var(--black); padding:14px; display:flex; align-items:center; justify-content:center; margin:0 auto 10px; width:230px; height:230px; position:relative;}
+  .qr-box img{width:100%; height:100%; object-fit:contain;}
+  .qr-box.expired{filter:grayscale(1) opacity(.35);}
+  .qr-placeholder{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:12px; text-align:center; padding:10px; border:3px dashed var(--black); color:#555;}
+  .qr-overlay{position:absolute; inset:0; display:none; align-items:center; justify-content:center; background:rgba(255,255,255,.9); font-family:'Archivo Black',sans-serif; font-size:14px; text-align:center; padding:10px;}
+  .qr-overlay.show{display:flex;}
+  .qr-note{text-align:center; font-size:11px; font-weight:700; opacity:.65; margin-bottom:14px;}
+
+  .amount-highlight{text-align:center; font-family:'Archivo Black',sans-serif; font-size:26px; background:var(--yellow); border:3px solid var(--black); padding:10px; margin-bottom:14px;}
+
+  .timer-wrap{text-align:center; margin-bottom:16px;}
+  .timer-label{font-size:11px; font-weight:700; text-transform:uppercase; opacity:.7;}
+  .timer{font-family:'Archivo Black',sans-serif; font-size:28px; letter-spacing:1px;}
+  .timer.danger{color:var(--red);}
+  .progress-track{ height:12px; border:3px solid var(--black); background:var(--white); margin-top:8px; }
+  .progress-fill{ height:100%; background:var(--green); width:100%; transition:width 1s linear, background .3s; }
+
+  .details{border-top:3px dashed var(--black); padding-top:12px; margin-bottom:16px;}
+  .detail-row{ display:flex; justify-content:space-between; gap:8px; font-size:13px; padding:5px 0; }
+  .detail-row .k{font-weight:600; opacity:.65;}
+  .detail-row .v{font-weight:700; text-align:right;}
+
+  .info-box{background:#FFF6D8; border:3px solid var(--black); padding:10px 12px; font-size:12px; font-weight:600; margin-bottom:14px; line-height:1.5;}
+  .info-box.blue{background:#E3EEFF;}
+  .info-box.red{background:#FFE3E1;}
+
+  .btn-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px; }
+
+  #receiptView, #failedView{display:none;}
+  .check-sticker{width:76px; height:76px; border-radius:50%; background:var(--green); border:5px solid var(--black); display:flex; align-items:center; justify-content:center; margin:0 auto 14px; transform:rotate(-4deg); box-shadow:5px 5px 0 var(--black);}
+  .check-sticker.bad{background:var(--red);}
+  .check-sticker svg{width:38px; height:38px;}
+  .receipt-title{text-align:center; font-size:22px; margin-bottom:4px;}
+  .receipt-sub{text-align:center; font-size:12px; font-weight:700; opacity:.6; margin-bottom:18px;}
+  .receipt-amount{text-align:center; font-family:'Archivo Black',sans-serif; font-size:32px; background:var(--yellow); border:4px solid var(--black); padding:14px; margin-bottom:16px; box-shadow:5px 5px 0 var(--black);}
+
+  .fade-in{animation:fadeIn .4s ease both;}
+  @keyframes fadeIn{ from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);} }
+  .shake{animation:shake .4s ease;}
+  @keyframes shake{ 10%,90%{transform:translateX(-2px);} 20%,80%{transform:translateX(4px);} 30%,50%,70%{transform:translateX(-8px);} 40%,60%{transform:translateX(8px);} }
+
+  .toast{position:fixed; left:50%; bottom:22px; transform:translateX(-50%) translateY(120%); background:var(--black); color:var(--white); border:3px solid var(--white); font-weight:700; font-size:13px; padding:12px 18px; z-index:50; box-shadow:4px 4px 0 var(--red); transition:transform .3s ease; max-width:90vw; text-align:center;}
+  .toast.show{transform:translateX(-50%) translateY(0);}
+
+  footer{margin-top:10px; padding:20px 16px 10px;}
+  .footer-card{background:var(--black); color:var(--white); border:var(--border) solid var(--black); padding:16px; box-shadow:6px 6px 0 var(--red); position:relative;}
+  .footer-card h3{color:var(--yellow); font-size:15px; margin-bottom:8px;}
+  .footer-card p{font-size:12px; margin:3px 0; opacity:.9;}
+  .footer-strip{display:flex; justify-content:space-between; font-size:10px; font-weight:700; opacity:.6; margin-top:14px; text-align:center;}
+  .admin-link{background:none; border:none; color:var(--white); text-decoration:underline; font-size:11px; font-weight:700; cursor:pointer; padding:0; margin-top:10px; opacity:.7;}
+
+  /* ===== ADMIN PANEL ===== */
+  #adminPanel{display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:100; align-items:flex-start; justify-content:center; padding:20px 14px; overflow-y:auto;}
+  #adminPanel.show{display:flex;}
+  .admin-box{background:var(--white); border:5px solid var(--black); box-shadow:8px 8px 0 var(--black); max-width:460px; width:100%; padding:18px; margin-top:20px;}
+  .admin-box h2{font-size:18px; margin-bottom:4px;}
+  .admin-box .sub{font-size:11px; font-weight:700; opacity:.6; margin-bottom:14px;}
+  .admin-close{float:right; border:3px solid var(--black); background:var(--red); color:var(--white); font-family:'Archivo Black',sans-serif; padding:4px 10px; cursor:pointer; box-shadow:3px 3px 0 var(--black);}
+  .order-row{border:3px solid var(--black); padding:10px; margin-bottom:10px; background:#FAFAFA;}
+  .order-row .top{display:flex; justify-content:space-between; font-size:12px; font-weight:700; margin-bottom:4px;}
+  .order-row .amt{font-family:'Archivo Black',sans-serif; font-size:18px; margin-bottom:8px;}
+  .order-row .tag{display:inline-block; font-size:10px; font-weight:700; padding:2px 6px; border:2px solid var(--black); margin-bottom:8px;}
+  .order-row .row-btns{display:grid; grid-template-columns:1fr 1fr; gap:6px;}
+  .empty-note{font-size:12px; font-weight:600; opacity:.6; text-align:center; padding:16px 0;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="logo-box">
+      <h1>KOPI RUSUH</h1>
+      <span>BELI SANTAI, BAYAR GERCEP</span>
+    </div>
+    <div class="qris-badge">✓ QRIS<br>ALL PAYMENT</div>
+  </div>
+  <div class="zigzag"></div>
+</header>
+
+<div class="wrap">
+<main>
+  <div class="deco-square"></div>
+  <div class="deco-circle"></div>
+
+  <div id="paymentView">
+
+    <!-- STEP 1: amount form -->
+    <div class="card" id="formCard">
+      <span class="status-badge pending">ISI NOMINAL</span>
+      <span class="card-label">LANGKAH 1 — NOMINAL</span>
+      <p class="field-title">Pilih nominal cepat</p>
+      <div class="chip-row" id="chipRow">
+        <div class="chip" data-val="15000">Rp15rb</div>
+        <div class="chip" data-val="25000">Rp25rb</div>
+        <div class="chip" data-val="50000">Rp50rb</div>
+        <div class="chip" data-val="100000">Rp100rb</div>
+      </div>
+      <p class="field-title">Atau masukkan nominal manual</p>
+      <div class="amount-input-row">
+        <span class="amount-prefix">Rp</span>
+        <input type="number" id="amountInput" placeholder="0" min="1000" step="500">
+      </div>
+      <button class="btn yellow" id="generateBtn">⚡ TAMPILKAN KODE QRIS</button>
+    </div>
+
+    <!-- STEP 2: static QR + manual confirm -->
+    <div class="card" id="qrCard" style="display:none;">
+      <span class="status-badge pending" id="statusBadge">MENUNGGU PEMBAYARAN</span>
+      <span class="card-label">SCAN QRIS DI BAWAH INI</span>
+
+      <div class="qr-box" id="qrBox">
+        <img id="qrImage" src="https://cdn.zass.in/files/PBaIpo0HpW.jpeg" alt="QRIS SHADOW BUGZ"
+             onerror="this.style.display='none'; document.getElementById('qrPlaceholder').style.display='flex';">
+        <div class="qr-placeholder" id="qrPlaceholder" style="display:none; flex-direction:column; align-items:center; justify-content:center; height:100%;">
+          📷<br>Taruh file <b>qris-static.jpg</b><br>(gambar QRIS aslimu)<br>di folder yang sama dengan file ini
+        </div>
+        <div class="qr-overlay" id="qrOverlay">WAKTU HABIS<br>SILAKAN ULANGI</div>
+      </div>
+      <p class="qr-note">Scan pakai GoPay / OVO / DANA / m-banking apa saja</p>
+
+      <div class="amount-highlight" id="detAmount">Rp0</div>
+      <div class="info-box" id="waitInstruction">
+        ⚠️ Nominal QRIS ini <b>statis</b> — pastikan kamu transfer <b>tepat</b> sejumlah nominal di atas, lalu klik tombol "Saya Sudah Bayar" di bawah.
+      </div>
+
+      <div class="timer-wrap" id="timerWrap">
+        <div class="timer-label">Batas waktu konfirmasi</div>
+        <div class="timer" id="timerText">15:00</div>
+        <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+      </div>
+
+      <div class="details">
+        <div class="detail-row"><span class="k">Merchant</span><span class="v">KOPI RUSUH</span></div>
+        <div class="detail-row"><span class="k">ID Transaksi</span><span class="v" id="detTrx">-</span></div>
+        <div class="detail-row"><span class="k">Waktu Dibuat</span><span class="v" id="detTime">-</span></div>
+      </div>
+
+      <button class="btn green" id="paidBtn">✅ SAYA SUDAH BAYAR</button>
+      <button class="btn blue" id="refreshBtn" style="display:none; margin-top:10px;">🔄 REFRESH STATUS</button>
+
+      <div class="btn-grid">
+        <button class="btn white small" id="downloadQrBtn">⬇ SIMPAN QR</button>
+        <button class="btn white small" id="shareBtn">↗ BAGIKAN</button>
+      </div>
+      <div class="btn-grid">
+        <button class="btn red small" id="resetBtn" style="grid-column:1/3;">✕ BATALKAN / GANTI NOMINAL</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ===================== RECEIPT (SUCCESS) ===================== -->
+  <div id="receiptView">
+    <div class="card">
+      <span class="status-badge success">LUNAS ✓</span>
+      <div class="check-sticker">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#0A0A0A" stroke-width="3" stroke-linecap="square"><path d="M4 12l5 5L20 6"/></svg>
+      </div>
+      <h2 class="receipt-title">PEMBAYARAN BERHASIL!</h2>
+      <p class="receipt-sub">Sudah diverifikasi oleh admin SHADOW BUGZH</p>
+      <div class="receipt-amount" id="recAmount">Rp0</div>
+      <div class="details">
+        <div class="detail-row"><span class="k">Merchant</span><span class="v">KOPI RUSUH</span></div>
+        <div class="detail-row"><span class="k">ID Transaksi</span><span class="v" id="recTrx">-</span></div>
+        <div class="detail-row"><span class="k">Metode</span><span class="v">QRIS (verifikasi manual)</span></div>
+        <div class="detail-row"><span class="k">Waktu Verifikasi</span><span class="v" id="recTime">-</span></div>
+        <div class="detail-row"><span class="k">Status</span><span class="v" style="color:var(--green);">BERHASIL</span></div>
+      </div>
+      <button class="btn green" id="downloadReceiptBtn">⬇ SIMPAN BUKTI BAYAR</button>
+      <div class="btn-grid"><button class="btn white small" style="grid-column:1/3;" id="newTrxBtn1">＋ TRANSAKSI BARU</button></div>
+    </div>
+  </div>
+
+  <!-- ===================== FAILED VIEW ===================== -->
+  <div id="failedView">
+    <div class="card">
+      <span class="status-badge failed">GAGAL ✕</span>
+      <div class="check-sticker bad">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="square"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </div>
+      <h2 class="receipt-title">PEMBAYARAN TIDAK TERVERIFIKASI</h2>
+      <p class="receipt-sub">Admin tidak menemukan transfer yang cocok</p>
+      <div class="info-box red">Cek kembali bukti transfer kamu, lalu hubungi CS lewat kontak di bawah dengan menyertakan ID Transaksi.</div>
+      <div class="details">
+        <div class="detail-row"><span class="k">ID Transaksi</span><span class="v" id="failTrx">-</span></div>
+      </div>
+      <div class="btn-grid"><button class="btn white small" style="grid-column:1/3;" id="newTrxBtn2">＋ COBA TRANSAKSI BARU</button></div>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  <div class="footer-card">
+    <h3>PERLU BANTUAN?</h3>
+    <p>📞 WhatsApp CS: 0822-5791-6134</p>
+    <p>✉️ antirege99@gmail.com</p>
+    <p>Transaksi bermasalah? Simpan ID Transaksi lalu hubungi CS.</p>
+    <div class="footer-strip">
+      <span>© SHADOW BUGZ 2026</span>
+      <span>QRIS STATIS — VERIFIKASI MANUAL</span>
+    </div>
+    <button class="admin-link" id="openAdmin">🔐 Panel Admin (khusus kasir)</button>
+  </div>
+</footer>
+</div>
+
+<!-- ===================== ADMIN PANEL ===================== -->
+<div id="adminPanel">
+  <div class="admin-box">
+    <button class="admin-close" id="closeAdmin">TUTUP</button>
+    <h2>PANEL ADMIN</h2>
+    <p class="sub">Tandai transaksi lunas/gagal secara manual, setelah cek mutasi rekening/e-wallet kamu.</p>
+    <div class="info-box blue" style="margin-bottom:14px;">
+      Data ini tersimpan di browser (localStorage) — hanya untuk 1 perangkat/demo. Untuk kasir di HP berbeda dari pembeli, sambungkan ke database (mis. Firebase/Supabase) atau backend.
+    </div>
+    <div id="orderList"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  const paymentView = document.getElementById('paymentView');
+  const receiptView = document.getElementById('receiptView');
+  const failedView = document.getElementById('failedView');
+  const formCard = document.getElementById('formCard');
+  const qrCard = document.getElementById('qrCard');
+  const amountInput = document.getElementById('amountInput');
+  const chipRow = document.getElementById('chipRow');
+  const generateBtn = document.getElementById('generateBtn');
+  const qrBox = document.getElementById('qrBox');
+  const qrOverlay = document.getElementById('qrOverlay');
+  const statusBadge = document.getElementById('statusBadge');
+  const timerText = document.getElementById('timerText');
+  const timerWrap = document.getElementById('timerWrap');
+  const progressFill = document.getElementById('progressFill');
+  const detAmount = document.getElementById('detAmount');
+  const detTrx = document.getElementById('detTrx');
+  const detTime = document.getElementById('detTime');
+  const waitInstruction = document.getElementById('waitInstruction');
+  const paidBtn = document.getElementById('paidBtn');
+  const refreshBtn = document.getElementById('refreshBtn');
+  const downloadQrBtn = document.getElementById('downloadQrBtn');
+  const shareBtn = document.getElementById('shareBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const recAmount = document.getElementById('recAmount');
+  const recTrx = document.getElementById('recTrx');
+  const recTime = document.getElementById('recTime');
+  const failTrx = document.getElementById('failTrx');
+  const downloadReceiptBtn = document.getElementById('downloadReceiptBtn');
+  const toastEl = document.getElementById('toast');
+  const openAdmin = document.getElementById('openAdmin');
+  const closeAdmin = document.getElementById('closeAdmin');
+  const adminPanel = document.getElementById('adminPanel');
+  const orderList = document.getElementById('orderList');
+
+  const HOLD_DURATION = 900; // 15 menit batas waktu konfirmasi "saya sudah bayar"
+  const ADMIN_PIN = 'asepesemka'; // GANTI PIN INI sebelum dipakai sungguhan — ini cuma demo, bukan otentikasi aman
+
+  // ==== KONFIGURASI SUPABASE — GANTI DUA NILAI INI ====
+  const SUPABASE_URL = 'https://jlrxqepvnazrmbeoxgar.supabase.co';   // <-- ganti dengan Project URL kamu
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpscnhxZXB2bmF6cm1iZW94Z2FyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYzMTQ3MzUsImV4cCI6MjEwMTg5MDczNX0.0Asccz9YG8MOMmh943tE18kvCHL0SAhMPTOcWMRrHHI';                 // <-- ganti dengan anon public key kamu
+  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  let state = { amount:0, trxId:'', createdAt:null, remaining:HOLD_DURATION, status:'idle', countdownInterval:null, realtimeChannel:null };
+
+  function toast(msg){
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    clearTimeout(toastEl._t);
+    toastEl._t = setTimeout(()=> toastEl.classList.remove('show'), 2600);
+  }
+  function formatRupiah(n){ return 'Rp' + Number(n).toLocaleString('id-ID'); }
+  function genTrxId(){ return 'TRX-' + Date.now().toString().slice(-6) + Math.random().toString(36).substring(2,6).toUpperCase(); }
+
+  // ---- Supabase order helpers ----
+  // Kolom di tabel "orders": trx_id, amount, created_at, status
+  async function upsertOrder(order){
+    const { error } = await sb.from('orders').upsert({
+      trx_id: order.trxId,
+      amount: order.amount,
+      created_at: order.createdAt,
+      status: order.status
+    }, { onConflict: 'trx_id' });
+    if(error){ console.error(error); toast('Gagal menyimpan ke database: ' + error.message); }
+  }
+  async function getOrder(trxId){
+    const { data, error } = await sb.from('orders').select('*').eq('trx_id', trxId).maybeSingle();
+    if(error){ console.error(error); return null; }
+    if(!data) return null;
+    return { trxId: data.trx_id, amount: data.amount, createdAt: data.created_at, status: data.status };
+  }
+  async function loadPendingOrders(){
+    const { data, error } = await sb.from('orders')
+      .select('*')
+      .in('status', ['awaiting_verification','awaiting_payment'])
+      .order('created_at', { ascending: false });
+    if(error){ console.error(error); toast('Gagal memuat daftar transaksi: ' + error.message); return []; }
+    return data.map(o=>({ trxId:o.trx_id, amount:o.amount, createdAt:o.created_at, status:o.status }));
+  }
+  async function updateOrderStatus(trxId, status){
+    const { error } = await sb.from('orders').update({ status }).eq('trx_id', trxId);
+    if(error){ console.error(error); toast('Gagal update status: ' + error.message); }
+  }
+
+  // ---- Realtime: pembeli otomatis dapat update tanpa klik refresh ----
+  function subscribeToOrder(trxId){
+    if(state.realtimeChannel){ sb.removeChannel(state.realtimeChannel); }
+    state.realtimeChannel = sb.channel('order-' + trxId)
+      .on('postgres_changes',
+        { event:'UPDATE', schema:'public', table:'orders', filter:`trx_id=eq.${trxId}` },
+        (payload)=>{
+          const newStatus = payload.new.status;
+          if(newStatus === 'success') succeedTransaction();
+          else if(newStatus === 'failed') failTransaction();
+        })
+      .subscribe();
+  }
+  function unsubscribeOrder(){
+    if(state.realtimeChannel){ sb.removeChannel(state.realtimeChannel); state.realtimeChannel = null; }
+  }
+
+  // ---- chip selection ----
+  chipRow.addEventListener('click', (e)=>{
+    const chip = e.target.closest('.chip'); if(!chip) return;
+    [...chipRow.children].forEach(c=>c.classList.remove('active'));
+    chip.classList.add('active');
+    amountInput.value = chip.dataset.val;
+  });
+  amountInput.addEventListener('input', ()=>{ [...chipRow.children].forEach(c=>c.classList.remove('active')); });
+
+  generateBtn.addEventListener('click', ()=>{
+    const amt = parseInt(amountInput.value, 10);
+    if(!amt || amt < 1000){
+      formCard.classList.remove('shake'); void formCard.offsetWidth; formCard.classList.add('shake');
+      toast('Masukkan nominal minimal Rp1.000');
+      return;
+    }
+    startTransaction(amt);
+  });
+
+  async function startTransaction(amt){
+    state.amount = amt; state.trxId = genTrxId(); state.createdAt = new Date();
+    state.remaining = HOLD_DURATION; state.status = 'awaiting_payment';
+
+    formCard.style.display = 'none';
+    qrCard.style.display = 'block';
+    qrCard.classList.add('fade-in');
+
+    detAmount.textContent = formatRupiah(amt);
+    detTrx.textContent = state.trxId;
+    detTime.textContent = state.createdAt.toLocaleTimeString('id-ID');
+
+    qrBox.classList.remove('expired');
+    qrOverlay.classList.remove('show');
+    paidBtn.style.display = 'block';
+    refreshBtn.style.display = 'none';
+    waitInstruction.style.display = 'block';
+    timerWrap.style.display = 'block';
+    setStatus('pending');
+
+    await upsertOrder({ trxId: state.trxId, amount: amt, createdAt: state.createdAt.toISOString(), status: 'awaiting_payment' });
+    subscribeToOrder(state.trxId);
+
+    clearInterval(state.countdownInterval);
+    state.countdownInterval = setInterval(tickCountdown, 1000);
+    updateTimerUI();
+  }
+
+  function tickCountdown(){
+    state.remaining--;
+    if(state.remaining <= 0){ state.remaining = 0; updateTimerUI(); expireTransaction(); return; }
+    updateTimerUI();
+  }
+  function updateTimerUI(){
+    const m = String(Math.floor(state.remaining/60)).padStart(2,'0');
+    const s = String(state.remaining%60).padStart(2,'0');
+    timerText.textContent = `${m}:${s}`;
+    const pct = Math.max(0,(state.remaining/HOLD_DURATION)*100);
+    progressFill.style.width = pct + '%';
+    if(state.remaining <= 60){ timerText.classList.add('danger'); progressFill.style.background = 'var(--red)'; }
+    else { timerText.classList.remove('danger'); progressFill.style.background = 'var(--green)'; }
+  }
+
+  function setStatus(s){
+    state.status = s;
+    statusBadge.className = 'status-badge ' + (s==='pending'?'pending': s==='verif'?'verif': s);
+    const labels = {pending:'MENUNGGU PEMBAYARAN', verif:'MENUNGGU VERIFIKASI', success:'BERHASIL', failed:'GAGAL', expired:'KEDALUARSA'};
+    statusBadge.textContent = labels[s] || s.toUpperCase();
+  }
+
+  // ---- "Saya sudah bayar" -> masuk antrian verifikasi manual admin ----
+  paidBtn.addEventListener('click', async ()=>{
+    if(!confirm(`Konfirmasi: kamu sudah transfer ${formatRupiah(state.amount)} ke QRIS KOPI RUSUH?`)) return;
+    clearInterval(state.countdownInterval);
+    setStatus('verif');
+    paidBtn.style.display = 'none';
+    refreshBtn.style.display = 'block';
+    waitInstruction.innerHTML = '⏳ Terima kasih! Pembayaran kamu sedang <b>diverifikasi manual</b> oleh admin. Halaman ini akan otomatis update begitu diverifikasi, atau klik "Refresh Status" untuk cek manual.';
+    timerWrap.style.display = 'none';
+
+    await updateOrderStatus(state.trxId, 'awaiting_verification');
+    toast('Konfirmasi terkirim, menunggu verifikasi admin.');
+  });
+
+  // ---- refresh status manual (fallback kalau realtime tidak nyambung) ----
+  refreshBtn.addEventListener('click', async ()=>{
+    refreshBtn.disabled = true; refreshBtn.textContent = '⏳ MENGECEK...';
+    const order = await getOrder(state.trxId);
+    refreshBtn.disabled = false; refreshBtn.textContent = '🔄 REFRESH STATUS';
+    if(!order){ toast('Data transaksi tidak ditemukan.'); return; }
+    if(order.status === 'success'){ succeedTransaction(); }
+    else if(order.status === 'failed'){ failTransaction(); }
+    else { toast('Masih menunggu verifikasi admin...'); }
+  });
+
+  async function expireTransaction(){
+    setStatus('expired');
+    qrBox.classList.add('expired');
+    qrOverlay.classList.add('show');
+    paidBtn.disabled = true;
+    await updateOrderStatus(state.trxId, 'expired');
+    toast('Waktu konfirmasi habis. Silakan buat transaksi baru.');
+  }
+
+  function succeedTransaction(){
+    unsubscribeOrder();
+    recAmount.textContent = formatRupiah(state.amount);
+    recTrx.textContent = state.trxId;
+    recTime.textContent = new Date().toLocaleString('id-ID');
+    paymentView.style.display = 'none';
+    receiptView.style.display = 'block';
+    receiptView.querySelector('.card').classList.add('fade-in');
+  }
+  function failTransaction(){
+    unsubscribeOrder();
+    failTrx.textContent = state.trxId;
+    paymentView.style.display = 'none';
+    failedView.style.display = 'block';
+    failedView.querySelector('.card').classList.add('fade-in');
+  }
+
+  // ---- download QR (gambar statis yang sama) ----
+  downloadQrBtn.addEventListener('click', ()=>{
+    const img = document.getElementById('qrImage');
+    const link = document.createElement('a');
+    link.download = 'QRIS-KOPI-RUSUH.jpg';
+    link.href = img.src;
+    link.click();
+  });
+
+  // ---- share ----
+  shareBtn.addEventListener('click', async ()=>{
+    const text = `Bayar QRIS KOPI RUSUH\nNominal: ${formatRupiah(state.amount)}\nID Transaksi: ${state.trxId}`;
+    if(navigator.share){ try{ await navigator.share({title:'Pembayaran QRIS KOPI RUSUH', text}); }catch(e){} }
+    else if(navigator.clipboard){ await navigator.clipboard.writeText(text); toast('Detail transaksi disalin ke clipboard!'); }
+    else { toast('Fitur bagikan tidak didukung di browser ini'); }
+  });
+
+  // ---- reset ----
+  resetBtn.addEventListener('click', resetToForm);
+  document.getElementById('newTrxBtn1').addEventListener('click', ()=>{ receiptView.style.display='none'; paymentView.style.display='block'; resetToForm(); });
+  document.getElementById('newTrxBtn2').addEventListener('click', ()=>{ failedView.style.display='none'; paymentView.style.display='block'; resetToForm(); });
+
+  function resetToForm(){
+    clearInterval(state.countdownInterval);
+    unsubscribeOrder();
+    amountInput.value = '';
+    [...chipRow.children].forEach(c=>c.classList.remove('active'));
+    qrCard.style.display = 'none';
+    formCard.style.display = 'block';
+    paidBtn.disabled = false;
+  }
+
+  // ---- download receipt as image ----
+  downloadReceiptBtn.addEventListener('click', ()=>{
+    const c = document.createElement('canvas'); c.width = 640; c.height = 760;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#FFE600'; ctx.fillRect(0,0,c.width,c.height);
+    const pad = 30;
+    ctx.fillStyle = '#FFFFFF'; ctx.fillRect(pad,pad,c.width-pad*2,c.height-pad*2);
+    ctx.lineWidth = 8; ctx.strokeStyle = '#0A0A0A'; ctx.strokeRect(pad,pad,c.width-pad*2,c.height-pad*2);
+
+    ctx.textAlign = 'center';
+    ctx.beginPath(); ctx.arc(c.width/2, 140, 50, 0, Math.PI*2); ctx.fillStyle = '#00C853'; ctx.fill();
+    ctx.lineWidth = 6; ctx.strokeStyle = '#0A0A0A'; ctx.stroke();
+    ctx.lineWidth = 8; ctx.lineCap='square';
+    ctx.beginPath(); ctx.moveTo(c.width/2-22, 140); ctx.lineTo(c.width/2-4, 160); ctx.lineTo(c.width/2+26, 116); ctx.stroke();
+
+    ctx.fillStyle = '#0A0A0A'; ctx.font = '900 28px Arial';
+    ctx.fillText('PEMBAYARAN BERHASIL', c.width/2, 230);
+    ctx.font = '700 13px Arial'; ctx.fillStyle = '#666';
+    ctx.fillText('BUKTI PEMBAYARAN QRIS — KOPI RUSUH', c.width/2, 256);
+
+    ctx.fillStyle = '#FFE600'; ctx.fillRect(pad+40, 290, c.width-pad*2-80, 90);
+    ctx.lineWidth = 6; ctx.strokeStyle = '#0A0A0A'; ctx.strokeRect(pad+40, 290, c.width-pad*2-80, 90);
+    ctx.fillStyle = '#0A0A0A'; ctx.font = '900 40px Arial';
+    ctx.fillText(formatRupiah(state.amount), c.width/2, 348);
+
+    ctx.textAlign = 'left'; ctx.font = '700 15px Arial';
+    const rows = [['Merchant','KOPI RUSUH'],['ID Transaksi', state.trxId],['Metode','QRIS (verifikasi manual)'],['Waktu Verifikasi', new Date().toLocaleString('id-ID')],['Status','BERHASIL']];
+    let y = 430;
+    rows.forEach(([k,v])=>{
+      ctx.fillStyle = '#666'; ctx.fillText(k, pad+50, y);
+      ctx.fillStyle = '#0A0A0A'; ctx.textAlign = 'right'; ctx.fillText(v, c.width-pad-50, y);
+      ctx.textAlign = 'left'; y += 42;
+    });
+    ctx.textAlign = 'center'; ctx.font = '700 12px Arial'; ctx.fillStyle = '#666';
+    ctx.fillText('Simpan bukti ini sebagai referensi transaksi Anda', c.width/2, y+30);
+
+    const link = document.createElement('a');
+    link.download = `Bukti-Bayar-${state.trxId}.png`;
+    link.href = c.toDataURL('image/png');
+    link.click();
+    toast('Bukti pembayaran disimpan!');
+  });
+
+  // ===================== ADMIN PANEL =====================
+  let adminRefreshInterval = null;
+
+  openAdmin.addEventListener('click', async ()=>{
+    const pin = prompt('Masukkan PIN Admin:');
+    if(pin === null) return;
+    if(pin !== ADMIN_PIN){ toast('PIN salah.'); return; }
+    await renderOrderList();
+    adminPanel.classList.add('show');
+    // auto-refresh daftar tiap 5 detik selagi panel terbuka
+    clearInterval(adminRefreshInterval);
+    adminRefreshInterval = setInterval(renderOrderList, 5000);
+  });
+  closeAdmin.addEventListener('click', ()=>{
+    adminPanel.classList.remove('show');
+    clearInterval(adminRefreshInterval);
+  });
+
+  async function renderOrderList(){
+    const orders = await loadPendingOrders();
+    orderList.innerHTML = '';
+    if(orders.length === 0){
+      orderList.innerHTML = '<div class="empty-note">Belum ada transaksi yang perlu diverifikasi.</div>';
+      return;
+    }
+    orders.forEach(o=>{
+      const row = document.createElement('div');
+      row.className = 'order-row';
+      const tagLabel = o.status === 'awaiting_verification' ? 'MENUNGGU VERIFIKASI' : 'MENUNGGU BAYAR';
+      row.innerHTML = `
+        <div class="top"><span>${o.trxId}</span><span>${new Date(o.createdAt).toLocaleTimeString('id-ID')}</span></div>
+        <div class="amt">${formatRupiah(o.amount)}</div>
+        <span class="tag">${tagLabel}</span>
+        <div class="row-btns">
+          <button class="btn green small" data-action="paid" data-trx="${o.trxId}">✅ TANDAI LUNAS</button>
+          <button class="btn red small" data-action="failed" data-trx="${o.trxId}">✕ TANDAI GAGAL</button>
+        </div>`;
+      orderList.appendChild(row);
+    });
+  }
+
+  orderList.addEventListener('click', async (e)=>{
+    const btn = e.target.closest('button[data-action]');
+    if(!btn) return;
+    const trxId = btn.dataset.trx;
+    btn.disabled = true;
+    const newStatus = btn.dataset.action === 'paid' ? 'success' : 'failed';
+    await updateOrderStatus(trxId, newStatus);
+    toast(`${trxId} ditandai ${newStatus === 'success' ? 'LUNAS' : 'GAGAL'}`);
+    renderOrderList();
+  });
+
+})();
+</script>
+</body>
+</html>
