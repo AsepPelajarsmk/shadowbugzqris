@@ -531,8 +531,8 @@
 
   // ---- share ----
   shareBtn.addEventListener('click', async ()=>{
-    const text = `Bayar QRIS KOPI RUSUH\nNominal: ${formatRupiah(state.amount)}\nID Transaksi: ${state.trxId}`;
-    if(navigator.share){ try{ await navigator.share({title:'Pembayaran QRIS KOPI RUSUH', text}); }catch(e){} }
+    const text = `Bayar QRIS SHADOW BUGZ\nNominal: ${formatRupiah(state.amount)}\nID Transaksi: ${state.trxId}`;
+    if(navigator.share){ try{ await navigator.share({title:'Pembayaran QRIS SHADOW BUGZ', text}); }catch(e){} }
     else if(navigator.clipboard){ await navigator.clipboard.writeText(text); toast('Detail transaksi disalin ke clipboard!'); }
     else { toast('Fitur bagikan tidak didukung di browser ini'); }
   });
@@ -570,7 +570,7 @@
     ctx.fillStyle = '#0A0A0A'; ctx.font = '900 28px Arial';
     ctx.fillText('PEMBAYARAN BERHASIL', c.width/2, 230);
     ctx.font = '700 13px Arial'; ctx.fillStyle = '#666';
-    ctx.fillText('BUKTI PEMBAYARAN QRIS — KOPI RUSUH', c.width/2, 256);
+    ctx.fillText('BUKTI PEMBAYARAN QRIS — SHADOW BUGZ', c.width/2, 256);
 
     ctx.fillStyle = '#FFE600'; ctx.fillRect(pad+40, 290, c.width-pad*2-80, 90);
     ctx.lineWidth = 6; ctx.strokeStyle = '#0A0A0A'; ctx.strokeRect(pad+40, 290, c.width-pad*2-80, 90);
@@ -578,7 +578,7 @@
     ctx.fillText(formatRupiah(state.amount), c.width/2, 348);
 
     ctx.textAlign = 'left'; ctx.font = '700 15px Arial';
-    const rows = [['Merchant','KOPI RUSUH'],['ID Transaksi', state.trxId],['Metode','QRIS (verifikasi manual)'],['Waktu Verifikasi', new Date().toLocaleString('id-ID')],['Status','BERHASIL']];
+    const rows = [['Merchant','SHADOW BUGZ'],['ID Transaksi', state.trxId],['Metode','QRIS (verifikasi manual)'],['Waktu Verifikasi', new Date().toLocaleString('id-ID')],['Status','BERHASIL']];
     let y = 430;
     rows.forEach(([k,v])=>{
       ctx.fillStyle = '#666'; ctx.fillText(k, pad+50, y);
